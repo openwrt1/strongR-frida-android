@@ -95,7 +95,9 @@ jobs:
           real=$(realpath $path)
           echo "Apply patches in $real to frida/subprojects/$name"
           cd subprojects/$name
-          git am ../../../Patchs/strongR-frida/$name/*.patch
+          for p in ../../../Patchs/strongR-frida/$name/*.patch; do
+            patch -p1 < "$p" || true
+          done
           cd ../..
           echo $i
         done
