@@ -11,7 +11,6 @@ jobs:
 
     outputs:
       FRIDA_VERSION: ${{ steps.pullFridaLatestRelease.outputs.FRIDA_VERSION }}
-      ALREADY_RELEASE: ${{ steps.checkReleaseVersion.outputs.ALREADY_RELEASE }}
     steps:
       - name: Pull Frida Latest Release
         id: pullFridaLatestRelease
@@ -27,44 +26,17 @@ jobs:
               data: { tag_name: ver }
             } = releaseResponse;
             core.setOutput('FRIDA_VERSION', ver);
-      - name: Check release version
-        id: checkReleaseVersion
-        uses: actions/github-script@v3.1.0
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            try {
-              const releaseVersion = '${{ steps.pullFridaLatestRelease.outputs.FRIDA_VERSION }}'
-              const releaseResponse = await github.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: releaseVersion
-              });
-              const {
-                data: { tag_name: ver }
-              } = releaseResponse;
-              if (ver == '${{ steps.pullFridaLatestRelease.outputs.FRIDA_VERSION }}'){
-                  core.setOutput('ALREADY_RELEASE', '1');
-              }
-              else{
-                  core.setOutput('ALREADY_RELEASE', '0');
-              }
-            } catch (e) {
-              if(e.message == 'Not Found'){
-                core.setOutput('ALREADY_RELEASE', '0');
-              }
-              else{
-                core.setFailed(e.message);
-              }
-            }
-
 
   create_release:
     needs: check_version
     runs-on: ubuntu-22.04
-    if: needs.check_version.outputs.ALREADY_RELEASE == '0'
 
     steps:
+      - name: Delete existing release and tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ needs.check_version.outputs.FRIDA_VERSION }}" --cleanup-tag -y --repo ${{ github.repository }} || true
       - uses: actions/create-release@master
         id: createRelease
         name: Create Runner Release
